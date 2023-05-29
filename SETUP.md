@@ -26,9 +26,40 @@ Add MP3s to the `music` folder in the repo root.
 
 Create `.env` from `sample.env` and fill with values.
 
+Install [ffmpeg](https://ffmpeg.org/). Example is for Ubuntu:
+
+```
+sudo apt-get install ffmpeg
+```
+
 Install deps and run bot:
 
 ```
 pip install -r "requirements.txt"
 python main.py
+```
+
+
+### Setup systemd service (optional)
+
+Create `guizhong.service` from `guizhong.sample.service`. Fill with your configuration:
+
+- WorkDirectory will be the location of the your cloned repo.
+- User will be the user that will run the bot. Make sure you run `sudo pip install -r "requirements.txt"` if using `root`.
+
+Copy `guizhong.service` to `/etc/systemd/system`.
+
+Reload systemd and start bot with:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl enable guizhong.service
+sudo systemctl start guizhong.service
+```
+
+Check status of service with:
+
+```
+sudo systemctl status guizhong.service
+journalctl -u guizhong.service | tail
 ```
