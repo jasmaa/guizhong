@@ -13,7 +13,7 @@ Go to OAuth2 page and copy the client id. This wil be `DISCORD_CLIENT_ID`.
 Visit following URL and invite bot to server:
 
 ```
-https://discord.com/api/oauth2/authorize?client_id=<FILL WITH DISCORD_CLIENT_ID>&scope=bot%20applications.commands
+https://discord.com/api/oauth2/authorize?client_id=<FILL WITH DISCORD_CLIENT_ID>&permissions=3148800&scope=bot%20applications.commands
 ```
 
 

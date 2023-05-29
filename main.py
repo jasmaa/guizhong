@@ -18,11 +18,11 @@ DEFAULT_VOICE_CHANNEL_NAME = "General"
 
 async def play_loop(voicechannel):
     while True:
-        if voicechannel in session_cache:
-            vc = session_cache[voicechannel]["vc"]
-            filename = session_cache[voicechannel]["queue"].pop(0)
-            session_cache[voicechannel]["queue"].append(filename)
-            session_cache[voicechannel]["current_song"] = filename
+        if voicechannel.id in session_cache:
+            vc = session_cache[voicechannel.id]["vc"]
+            filename = session_cache[voicechannel.id]["queue"].pop(0)
+            session_cache[voicechannel.id]["queue"].append(filename)
+            session_cache[voicechannel.id]["current_song"] = filename
 
             p = os.path.join(BASE_PATH, filename)
             f = MP3(p)
@@ -37,9 +37,9 @@ async def play_loop(voicechannel):
                 except asyncio.CancelledError:
                     print("sleep cancelled")
 
-            session_cache[voicechannel]["sleep_task"] = asyncio.create_task(
+            session_cache[voicechannel.id]["sleep_task"] = asyncio.create_task(
                 cancellable_sleep())
-            await session_cache[voicechannel]["sleep_task"]
+            await session_cache[voicechannel.id]["sleep_task"]
         else:
             break
 
@@ -52,13 +52,18 @@ async def on_ready():
 def get_voicechannel(ctx):
     voicechannel = discord.utils.get(
         ctx.guild.channels, name=DEFAULT_VOICE_CHANNEL_NAME)
+    if voicechannel == None:
+        for channel in ctx.guild.channels:
+            if type(channel) is discord.VoiceChannel:
+                voicechannel = channel
+                break
     return voicechannel
 
 
 async def summon(voicechannel):
     if voicechannel not in session_cache:
         vc = await voicechannel.connect()
-        session_cache[voicechannel] = {
+        session_cache[voicechannel.id] = {
             "vc": vc,
             "queue": [f for f in os.listdir("music") if f.endswith("mp3")],
             "current_song": None,
@@ -70,9 +75,9 @@ async def summon(voicechannel):
 @bot.command()
 async def info(ctx):
     voicechannel = get_voicechannel(ctx)
-    if voicechannel in session_cache:
-        q = session_cache[voicechannel]["queue"]
-        current_song = session_cache[voicechannel]["current_song"]
+    if voicechannel.id in session_cache:
+        q = session_cache[voicechannel.id]["queue"]
+        current_song = session_cache[voicechannel.id]["current_song"]
         await ctx.send("```\n" + f"Now playing: {current_song}\n\n" + "Queue:\n" + "\n".join([f'{i+1}: {f}' for i, f in enumerate(q)]) + "\n```")
     else:
         await ctx.send("```\nNot playing...\n```")
@@ -83,20 +88,20 @@ async def play(ctx):
     voicechannel = get_voicechannel(ctx)
     await summon(voicechannel)
 
-    if session_cache[voicechannel]["sleep_task"]:
-        session_cache[voicechannel]["sleep_task"].cancel()
+    if session_cache[voicechannel.id]["sleep_task"]:
+        session_cache[voicechannel.id]["sleep_task"].cancel()
 
 
 @bot.command()
 async def stop(ctx):
     voicechannel = get_voicechannel(ctx)
-    if voicechannel in session_cache:
-        vc = session_cache[voicechannel]["vc"]
+    if voicechannel.id in session_cache:
+        vc = session_cache[voicechannel.id]["vc"]
         vc.stop()
         await vc.disconnect()
-        if session_cache[voicechannel]["sleep_task"]:
-            session_cache[voicechannel]["sleep_task"].cancel()
-        session_cache[voicechannel]["play_loop_task"].cancel()
-        del session_cache[voicechannel]
+        if session_cache[voicechannel.id]["sleep_task"]:
+            session_cache[voicechannel.id]["sleep_task"].cancel()
+        session_cache[voicechannel.id]["play_loop_task"].cancel()
+        del session_cache[voicechannel.id]
 
 bot.run(os.environ.get("DISCORD_TOKEN"))
