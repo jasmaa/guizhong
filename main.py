@@ -60,18 +60,6 @@ def get_voicechannel(ctx):
     return voicechannel
 
 
-async def summon(voicechannel):
-    if voicechannel not in session_cache:
-        vc = await voicechannel.connect()
-        session_cache[voicechannel.id] = {
-            "vc": vc,
-            "queue": [f for f in os.listdir("music") if f.endswith("mp3")],
-            "current_song": None,
-            "sleep_task": None,
-            "play_loop_task": asyncio.create_task(play_loop(voicechannel)),
-        }
-
-
 @bot.command()
 async def info(ctx):
     voicechannel = get_voicechannel(ctx)
@@ -86,8 +74,15 @@ async def info(ctx):
 @bot.command()
 async def play(ctx):
     voicechannel = get_voicechannel(ctx)
-    await summon(voicechannel)
-
+    if voicechannel.id not in session_cache:
+        vc = await voicechannel.connect()
+        session_cache[voicechannel.id] = {
+            "vc": vc,
+            "queue": [f for f in os.listdir("music") if f.endswith("mp3")],
+            "current_song": None,
+            "sleep_task": None,
+            "play_loop_task": asyncio.create_task(play_loop(voicechannel)),
+        }
     if session_cache[voicechannel.id]["sleep_task"]:
         session_cache[voicechannel.id]["sleep_task"].cancel()
 
