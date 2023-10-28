@@ -66,7 +66,7 @@ async def info(ctx):
     if voicechannel.id in session_cache:
         q = session_cache[voicechannel.id]["queue"]
         current_song = session_cache[voicechannel.id]["current_song"]
-        await ctx.send("```\n" + f"Now playing: {current_song}\n\n" + "Queue:\n" + "\n".join([f'{i+1}: {f}' for i, f in enumerate(q)]) + "\n```")
+        await ctx.send("```\n" + f"Now playing: {current_song}\n\n" + "Queue:\n" + "\n".join([f'{i+1}: {f}' for i, f in enumerate(q)][:5]) + "\n```")
     else:
         await ctx.send("```\nNot playing...\n```")
 
