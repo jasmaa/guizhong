@@ -16,8 +16,6 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=discord_command_prefix, intents=intents)
 session_cache = {}
 BASE_PATH = "music"
-DEFAULT_VOICE_CHANNEL_NAME = "General"
-
 
 async def play_loop(voicechannel):
     while True:
@@ -52,20 +50,20 @@ async def on_ready():
     print("Bot is ready!")
 
 
-def get_voicechannel(ctx):
-    voicechannel = discord.utils.get(
-        ctx.guild.channels, name=DEFAULT_VOICE_CHANNEL_NAME)
-    if voicechannel == None:
-        for channel in ctx.guild.channels:
-            if type(channel) is discord.VoiceChannel:
-                voicechannel = channel
-                break
+async def get_voicechannel(ctx):
+    voice_state = ctx.author.voice
+
+    if voice_state is None:
+        # Exiting if the user is not in a voice channel
+        return await ctx.send('You need to be in a voice channel to use this command')
+    
+    voicechannel = voice_state.channel
     return voicechannel
 
 
 @bot.command()
 async def info(ctx):
-    voicechannel = get_voicechannel(ctx)
+    voicechannel = await get_voicechannel(ctx)
     if voicechannel.id in session_cache:
         q = session_cache[voicechannel.id]["queue"]
         current_song = session_cache[voicechannel.id]["current_song"]
@@ -76,7 +74,7 @@ async def info(ctx):
 
 @bot.command()
 async def play(ctx):
-    voicechannel = get_voicechannel(ctx)
+    voicechannel = await get_voicechannel(ctx)
     if voicechannel.id not in session_cache:
         vc = await voicechannel.connect()
         session_cache[voicechannel.id] = {
@@ -92,7 +90,7 @@ async def play(ctx):
 
 @bot.command()
 async def stop(ctx):
-    voicechannel = get_voicechannel(ctx)
+    voicechannel = await get_voicechannel(ctx)
     if voicechannel.id in session_cache:
         vc = session_cache[voicechannel.id]["vc"]
         vc.stop()
