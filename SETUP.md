@@ -32,6 +32,12 @@ Install [ffmpeg](https://ffmpeg.org/). Example is for Ubuntu:
 sudo apt-get install ffmpeg
 ```
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/):
+
+```
+pip3 install uv
+```
+
 Install deps and run bot:
 
 ```
