@@ -40,8 +40,20 @@ def get_or_download_youtube_mp3(voicechannel_id, url):
     filepath = parent_path / filename
 
     if not os.path.exists(filepath):
-        subprocess.run(["yt-dlp", "-x", "--audio-format", "mp3", "-P", parent_path, "-o", filename, url])
-    
+        subprocess.run(
+            [
+                "yt-dlp",
+                "-x",
+                "--audio-format",
+                "mp3",
+                "-P",
+                parent_path,
+                "-o",
+                filename,
+                url,
+            ]
+        )
+
     return filepath
 
 
@@ -55,8 +67,8 @@ async def get_voicechannel(ctx):
 
     if voice_state is None:
         # Exiting if the user is not in a voice channel
-        return await ctx.send('You need to be in a voice channel to use this command')
-    
+        return await ctx.send("You need to be in a voice channel to use this command")
+
     voicechannel = voice_state.channel
     return voicechannel
 
@@ -73,7 +85,7 @@ async def play_queue(voicechannel_id):
         def post_play(e):
             queue.pop()
             session.play_loop_task = asyncio.create_task(play_queue(voicechannel_id))
-        
+
         vc.stop()
         vc.play(discord.FFmpegPCMAudio(filepath), after=post_play)
     else:
@@ -90,7 +102,15 @@ async def info(ctx):
 
         if len(queue) > 0:
             current_song = queue[0]
-            await ctx.send("```\n" + f"Now playing: {current_song.filepath}\n\n" + "Queue:\n" + "\n".join([f'{i+1}: {song.filepath}' for i, song in enumerate(queue)][:5]) + "\n```")
+            await ctx.send(
+                "```\n"
+                + f"Now playing: {current_song.filepath}\n\n"
+                + "Queue:\n"
+                + "\n".join(
+                    [f"{i+1}: {song.filepath}" for i, song in enumerate(queue)][:5]
+                )
+                + "\n```"
+            )
         else:
             await ctx.send("```\nNot playing\n```")
     else:
@@ -105,11 +125,11 @@ async def play(ctx, arg):
     if voicechannel.id not in session_cache:
         vc = await voicechannel.connect()
         session_cache[voicechannel.id] = Session(vc=vc)
-    
+
     session = session_cache[voicechannel.id]
     vc = session.vc
     queue = session.queue
-    
+
     # Download or get music
     print("Downloading...")
     url = arg
@@ -133,7 +153,7 @@ async def pause(ctx):
     if voicechannel.id not in session_cache:
         ctx.send("Not in the voice channel")
         return
-    
+
     session = session_cache[voicechannel.id]
     vc = session.vc
 
@@ -147,7 +167,7 @@ async def resume(ctx):
     if voicechannel.id not in session_cache:
         ctx.send("Not in the voice channel")
         return
-    
+
     session = session_cache[voicechannel.id]
     vc = session.vc
 
@@ -167,5 +187,6 @@ async def stop(ctx):
         if play_loop_task is not None:
             play_loop_task.cancel()
         del session_cache[voicechannel.id]
+
 
 bot.run(discord_token)
