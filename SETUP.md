@@ -17,11 +17,6 @@ https://discord.com/api/oauth2/authorize?client_id=<FILL WITH DISCORD_CLIENT_ID>
 ```
 
 
-### Add music
-
-Add MP3s to the `music` folder in the repo root.
-
-
 ### Run bot
 
 Create `.env` from `sample.env` and fill with values.
@@ -36,6 +31,12 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/):
 
 ```
 pip3 install uv
+```
+
+Install [YT-DLP](https://github.com/yt-dlp/yt-dlp/wiki/Installation#with-pip):
+
+```
+pip3 install yt-dlp
 ```
 
 Install deps and run bot:
