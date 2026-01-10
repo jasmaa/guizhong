@@ -3,6 +3,7 @@ import subprocess
 import hashlib
 from pathlib import Path
 import asyncio
+import json
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -28,33 +29,72 @@ class Session:
 
 
 class Song:
-    def __init__(self, name, filepath):
-        self.filepath = filepath
+    def __init__(self, song_hash, song_filepath, title, duration):
+        self.song_hash = song_hash
+        self.song_filepath = song_filepath
+        self.title = title
+        self.duration = duration
+
+    def __str__(self):
+        return str(self.song_filepath)
 
 
 def get_or_download_youtube_mp3(voicechannel_id, url):
-    h = hashlib.md5(url.encode("utf8")).hexdigest()
-    filename = f"{h}.mp3"
+    # TODO: validate url is youtube.com/watch?v=...
+    # TODO: generate hash from video id instead
+    song_hash = hashlib.md5(url.encode("utf8")).hexdigest()
 
-    parent_path = music_cache_path / str(voicechannel_id)
-    filepath = parent_path / filename
+    song_filename = "song.mp3"
+    metadata_filename = "metadata.json"
+    parent_path = music_cache_path / str(voicechannel_id) / song_hash
+    song_filepath = parent_path / song_filename
+    metadata_filepath = parent_path / metadata_filename
 
-    if not os.path.exists(filepath):
+    if not os.path.exists(parent_path):
         subprocess.run(
             [
                 "yt-dlp",
                 "-x",
                 "--audio-format",
                 "mp3",
-                "-P",
-                parent_path,
                 "-o",
-                filename,
+                song_filepath,
                 url,
             ]
         )
 
-    return filepath
+        metadata = {}
+        with open(metadata_filepath, "w") as f:
+            output = subprocess.Popen(
+                [
+                    "yt-dlp",
+                    "-J",
+                    url,
+                ],
+                stdout=subprocess.PIPE,
+            ).communicate()[0]
+            print()
+            metadata = json.loads(output.decode("utf8"))
+            json.dump(metadata, f)
+
+        return Song(
+            song_hash=song_hash,
+            song_filepath=song_filepath,
+            title=metadata["title"],
+            duration=metadata["duration"],
+        )
+
+    else:
+        metadata = {"title": "Unknown", "duration": -1}
+        with open(metadata_filepath, "r") as f:
+            metadata = json.load(f)
+
+        return Song(
+            song_hash=song_hash,
+            song_filepath=song_filepath,
+            title=metadata["title"],
+            duration=metadata["duration"],
+        )
 
 
 @bot.event
@@ -80,17 +120,18 @@ async def play_queue(voicechannel_id):
 
     # Play next song in the queue
     if len(queue) > 0:
-        filepath = queue[0].filepath
+        song_filepath = queue[0].song_filepath
 
         def post_play(e):
+            # TODO: figure out how to avoid calling this when stopping bot
             queue.pop()
-            session.play_loop_task = asyncio.create_task(play_queue(voicechannel_id))
+            session.play_music_task = asyncio.create_task(play_queue(voicechannel_id))
 
         vc.stop()
-        vc.play(discord.FFmpegPCMAudio(filepath), after=post_play)
+        vc.play(discord.FFmpegPCMAudio(song_filepath), after=post_play)
     else:
         vc.stop()
-        session.play_loop_task = None
+        session.play_music_task = None
 
 
 @bot.command()
@@ -104,10 +145,10 @@ async def info(ctx):
             current_song = queue[0]
             await ctx.send(
                 "```\n"
-                + f"Now playing: {current_song.filepath}\n\n"
+                + f"Now playing: {current_song.title} [{current_song.duration}s]\n\n"
                 + "Queue:\n"
                 + "\n".join(
-                    [f"{i+1}: {song.filepath}" for i, song in enumerate(queue)][:5]
+                    [f"{i+1}: {song.title}" for i, song in enumerate(queue)][:5]
                 )
                 + "\n```"
             )
@@ -131,19 +172,13 @@ async def play(ctx, arg):
     queue = session.queue
 
     # Download or get music
-    print("Downloading...")
     url = arg
-    filepath = get_or_download_youtube_mp3(voicechannel.id, url)
-    print(f"Downloaded to {filepath}")
-
-    # TODO: get song name
-    song = Song(name=filepath, filepath=filepath)
-
+    song = get_or_download_youtube_mp3(voicechannel.id, url)
     queue.append(song)
     print(f"Added {song} to queue")
 
     if not vc.is_playing():
-        session.play_loop_task = asyncio.create_task(play_queue(voicechannel.id))
+        session.play_music_task = asyncio.create_task(play_queue(voicechannel.id))
 
 
 @bot.command()
@@ -180,12 +215,12 @@ async def stop(ctx):
     if voicechannel.id in session_cache:
         session = session_cache[voicechannel.id]
         vc = session.vc
-        play_loop_task = session.play_loop_task
+        play_music_task = session.play_music_task
 
         vc.stop()
         await vc.disconnect()
-        if play_loop_task is not None:
-            play_loop_task.cancel()
+        if play_music_task is not None:
+            play_music_task.cancel()
         del session_cache[voicechannel.id]
 
 
