@@ -7,10 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+discord_token = os.environ.get("DISCORD_TOKEN")
+discord_command_prefix = os.environ.get("DISCORD_COMMAND_PREFIX", "!")
+
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix=discord_command_prefix, intents=intents)
 session_cache = {}
 BASE_PATH = "music"
 DEFAULT_VOICE_CHANNEL_NAME = "General"
@@ -99,4 +102,4 @@ async def stop(ctx):
         session_cache[voicechannel.id]["play_loop_task"].cancel()
         del session_cache[voicechannel.id]
 
-bot.run(os.environ.get("DISCORD_TOKEN"))
+bot.run(discord_token)
