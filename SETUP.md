@@ -35,8 +35,7 @@ sudo apt-get install ffmpeg
 Install deps and run bot:
 
 ```
-pip install -r "requirements.txt"
-python main.py
+uv run main.py
 ```
 
 
