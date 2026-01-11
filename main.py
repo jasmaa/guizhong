@@ -4,6 +4,8 @@ import hashlib
 from pathlib import Path
 import asyncio
 import json
+from urllib.parse import urlparse
+from urllib.parse import parse_qs
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -39,16 +41,30 @@ class Song:
         return str(self.song_filepath)
 
 
-def get_or_download_youtube_mp3(voicechannel_id, url):
-    # TODO: validate url is youtube.com/watch?v=...
-    # TODO: generate hash from video id instead
-    song_hash = hashlib.md5(url.encode("utf8")).hexdigest()
+def parse_youtube_video_url(url):
+    url_parse = urlparse(url)
 
-    song_filename = "song.mp3"
-    metadata_filename = "metadata.json"
+    if url_parse.hostname != "youtube.com" and url_parse.hostname != "www.youtube.com":
+        raise RuntimeError("invalid hostname")
+    if url_parse.path != "/watch":
+        raise RuntimeError("invalid path")
+
+    query_parse = parse_qs(url_parse.query)
+
+    if query_parse.get("v")[0] is None:
+        raise RuntimeError("invalid video id")
+
+    video_id = query_parse.get("v")[0]
+
+    return video_id
+
+
+def get_or_download_youtube_mp3(voicechannel_id, video_id):
+    song_hash = hashlib.md5(video_id.encode("utf8")).hexdigest()
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
     parent_path = music_cache_path / str(voicechannel_id) / song_hash
-    song_filepath = parent_path / song_filename
-    metadata_filepath = parent_path / metadata_filename
+    song_filepath = parent_path / "song.mp3"
+    metadata_filepath = parent_path / "metadata.json"
 
     if not os.path.exists(parent_path):
         subprocess.run(
@@ -59,7 +75,7 @@ def get_or_download_youtube_mp3(voicechannel_id, url):
                 "mp3",
                 "-o",
                 song_filepath,
-                url,
+                video_url,
             ]
         )
 
@@ -69,11 +85,10 @@ def get_or_download_youtube_mp3(voicechannel_id, url):
                 [
                     "yt-dlp",
                     "-J",
-                    url,
+                    video_url,
                 ],
                 stdout=subprocess.PIPE,
             ).communicate()[0]
-            print()
             metadata = json.loads(output.decode("utf8"))
             json.dump(metadata, f)
 
@@ -172,8 +187,8 @@ async def play(ctx, arg):
     queue = session.queue
 
     # Download or get music
-    url = arg
-    song = get_or_download_youtube_mp3(voicechannel.id, url)
+    video_id = parse_youtube_video_url(arg)
+    song = get_or_download_youtube_mp3(voicechannel.id, video_id)
     queue.append(song)
     print(f"Added {song} to queue")
 
