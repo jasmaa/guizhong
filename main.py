@@ -22,6 +22,12 @@ bot = commands.Bot(command_prefix=discord_command_prefix, intents=intents)
 session_cache = {}
 music_cache_path = Path("/tmp/guizhong/music_cache")
 
+AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE = (
+    "You need to be in a voice channel to use this command."
+)
+NO_SESSION_FOUND_MESSAGE = f"You need to have music queued to use this command. Try playing something with `{discord_command_prefix}play <YOUTUBE VIDEO URL>`."
+MAX_SONG_INFOS_TO_DISPLAY = 5
+
 
 class Session:
     def __init__(self, vc):
@@ -42,6 +48,7 @@ class Song:
 
 
 def parse_youtube_video_url(url):
+    """Parses Youtube video id from valid URL. Throws runtime error if URL is invalid."""
     url_parse = urlparse(url)
 
     if url_parse.hostname != "youtube.com" and url_parse.hostname != "www.youtube.com":
@@ -60,6 +67,7 @@ def parse_youtube_video_url(url):
 
 
 def get_or_download_youtube_mp3(voicechannel_id, video_id):
+    """Gets Youtube MP3 by voicechannel id and video id. If song is not cached, downloads from web."""
     song_hash = hashlib.md5(video_id.encode("utf8")).hexdigest()
     video_url = f"https://www.youtube.com/watch?v={video_id}"
     parent_path = music_cache_path / str(voicechannel_id) / song_hash
@@ -112,18 +120,20 @@ def get_or_download_youtube_mp3(voicechannel_id, video_id):
         )
 
 
-async def get_voicechannel(ctx):
+async def get_author_voicechannel(ctx):
+    """Gets voicechannel caller is in."""
     voice_state = ctx.author.voice
 
     if voice_state is None:
-        # Exiting if the user is not in a voice channel
-        return await ctx.send("You need to be in a voice channel to use this command")
+        return None
 
     voicechannel = voice_state.channel
     return voicechannel
 
 
+# TODO: fix clean up session breaking when stop is called
 async def clean_up_session(voicechannel_id):
+    """Cleans up and deletes queue-playing session."""
     session = session_cache[voicechannel_id]
     vc = session.vc
     play_music_task = session.play_music_task
@@ -136,6 +146,7 @@ async def clean_up_session(voicechannel_id):
 
 
 async def play_queue(voicechannel_id):
+    """Plays songs going down the session queue."""
     session = session_cache[voicechannel_id]
     vc = session.vc
     queue = session.queue
@@ -169,31 +180,44 @@ async def on_ready():
 
 @bot.command()
 async def info(ctx):
-    voicechannel = await get_voicechannel(ctx)
-    if voicechannel.id in session_cache:
-        session = session_cache[voicechannel.id]
-        queue = session.queue
+    """Provides info on current queue bot is playing."""
+    voicechannel = await get_author_voicechannel(ctx)
+    if voicechannel is None:
+        await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
+        return
 
-        if len(queue) > 0:
-            current_song = queue[0]
-            await ctx.send(
-                "```\n"
-                + f"Now playing: {current_song.title} [{current_song.duration}s]\n\n"
-                + "Queue:\n"
-                + "\n".join(
-                    [f"{i+1}: {song.title}" for i, song in enumerate(queue)][:5]
-                )
-                + "\n```"
-            )
-        else:
-            await ctx.send("```\nNot playing\n```")
-    else:
-        await ctx.send("```\nNot playing...\n```")
+    if voicechannel.id not in session_cache:
+        await ctx.send(NO_SESSION_FOUND_MESSAGE)
+        return
+
+    session = session_cache[voicechannel.id]
+    queue = session.queue
+
+    if len(queue) <= 0:
+        await ctx.send("```\nNot playing\n```")
+        return
+
+    current_song = queue[0]
+    await ctx.send(
+        "```\n"
+        + f"Now playing: {current_song.title} [{current_song.duration}s]\n\n"
+        + "Queue:\n"
+        + "\n".join(
+            [f"{i+1}: {song.title}" for i, song in enumerate(queue)][
+                :MAX_SONG_INFOS_TO_DISPLAY
+            ]
+        )
+        + "\n```"
+    )
 
 
 @bot.command()
 async def play(ctx, arg):
-    voicechannel = await get_voicechannel(ctx)
+    """Downloads and plays song in argument. If bot is not in call, bot will join call."""
+    voicechannel = await get_author_voicechannel(ctx)
+    if voicechannel is None:
+        await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
+        return
 
     # Connect or get voice client
     if voicechannel.id not in session_cache:
@@ -217,10 +241,14 @@ async def play(ctx, arg):
 
 @bot.command()
 async def pause(ctx):
-    voicechannel = await get_voicechannel(ctx)
+    """Pauses current song."""
+    voicechannel = await get_author_voicechannel(ctx)
+    if voicechannel is None:
+        await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
+        return
 
     if voicechannel.id not in session_cache:
-        ctx.send("Not in the voice channel")
+        await ctx.send(NO_SESSION_FOUND_MESSAGE)
         return
 
     session = session_cache[voicechannel.id]
@@ -231,10 +259,14 @@ async def pause(ctx):
 
 @bot.command()
 async def resume(ctx):
-    voicechannel = await get_voicechannel(ctx)
+    """Resumes current song."""
+    voicechannel = await get_author_voicechannel(ctx)
+    if voicechannel is None:
+        await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
+        return
 
     if voicechannel.id not in session_cache:
-        ctx.send("Not in the voice channel")
+        await ctx.send(NO_SESSION_FOUND_MESSAGE)
         return
 
     session = session_cache[voicechannel.id]
@@ -245,25 +277,36 @@ async def resume(ctx):
 
 @bot.command()
 async def skip(ctx):
-    voicechannel = await get_voicechannel(ctx)
+    """Skips current song in queue."""
+    voicechannel = await get_author_voicechannel(ctx)
+    if voicechannel is None:
+        await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
+        return
 
-    # Connect or get voice client
     if voicechannel.id not in session_cache:
-        vc = await voicechannel.connect()
-        session_cache[voicechannel.id] = Session(vc=vc)
+        await ctx.send(NO_SESSION_FOUND_MESSAGE)
+        return
 
     session = session_cache[voicechannel.id]
     vc = session.vc
 
-    # Stopping current stream will trigger after and queue up next song
+    # Stopping current stream will trigger after callback and queue up next song
     vc.stop()
 
 
 @bot.command()
 async def stop(ctx):
-    voicechannel = await get_voicechannel(ctx)
-    if voicechannel.id in session_cache:
-        clean_up_session(voicechannel.id)
+    """Stops bot from playing queue."""
+    voicechannel = await get_author_voicechannel(ctx)
+    if voicechannel is None:
+        await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
+        return
+
+    if voicechannel.id not in session_cache:
+        await ctx.send(NO_SESSION_FOUND_MESSAGE)
+        return
+
+    await clean_up_session(voicechannel.id)
 
 
 bot.run(discord_token)
