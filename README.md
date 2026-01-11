@@ -1,6 +1,6 @@
 # Guizhong
 
-A Discord bot that plays music from a local playlist
+A Discord bot that plays music from a queue.
 
 
 ## Getting started
