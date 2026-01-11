@@ -112,11 +112,6 @@ def get_or_download_youtube_mp3(voicechannel_id, video_id):
         )
 
 
-@bot.event
-async def on_ready():
-    print("Bot is ready!")
-
-
 async def get_voicechannel(ctx):
     voice_state = ctx.author.voice
 
@@ -128,25 +123,48 @@ async def get_voicechannel(ctx):
     return voicechannel
 
 
+async def clean_up_session(voicechannel_id):
+    session = session_cache[voicechannel_id]
+    vc = session.vc
+    play_music_task = session.play_music_task
+
+    vc.stop()
+    await vc.disconnect()
+    if play_music_task is not None:
+        play_music_task.cancel()
+    del session_cache[voicechannel_id]
+
+
 async def play_queue(voicechannel_id):
     session = session_cache[voicechannel_id]
     vc = session.vc
     queue = session.queue
 
-    # Play next song in the queue
     if len(queue) > 0:
+        # Play next song in the queue
         song_filepath = queue[0].song_filepath
 
         def post_play(e):
-            # TODO: figure out how to avoid calling this when stopping bot
             queue.pop()
-            session.play_music_task = asyncio.create_task(play_queue(voicechannel_id))
+            fut = session.play_music_task = asyncio.run_coroutine_threadsafe(
+                play_queue(voicechannel_id),
+                bot.loop,
+            )
+            try:
+                fut.result
+            except:
+                pass
 
         vc.stop()
         vc.play(discord.FFmpegPCMAudio(song_filepath), after=post_play)
     else:
-        vc.stop()
-        session.play_music_task = None
+        # No songs left in queue, clean up session and leave voice channel
+        await clean_up_session(voicechannel_id)
+
+
+@bot.event
+async def on_ready():
+    print("Bot is ready!")
 
 
 @bot.command()
@@ -192,7 +210,8 @@ async def play(ctx, arg):
     queue.append(song)
     print(f"Added {song} to queue")
 
-    if not vc.is_playing():
+    # Start a new music task if nothing is playing
+    if session.play_music_task is None:
         session.play_music_task = asyncio.create_task(play_queue(voicechannel.id))
 
 
@@ -225,18 +244,26 @@ async def resume(ctx):
 
 
 @bot.command()
+async def skip(ctx):
+    voicechannel = await get_voicechannel(ctx)
+
+    # Connect or get voice client
+    if voicechannel.id not in session_cache:
+        vc = await voicechannel.connect()
+        session_cache[voicechannel.id] = Session(vc=vc)
+
+    session = session_cache[voicechannel.id]
+    vc = session.vc
+
+    # Stopping current stream will trigger after and queue up next song
+    vc.stop()
+
+
+@bot.command()
 async def stop(ctx):
     voicechannel = await get_voicechannel(ctx)
     if voicechannel.id in session_cache:
-        session = session_cache[voicechannel.id]
-        vc = session.vc
-        play_music_task = session.play_music_task
-
-        vc.stop()
-        await vc.disconnect()
-        if play_music_task is not None:
-            play_music_task.cancel()
-        del session_cache[voicechannel.id]
+        clean_up_session(voicechannel.id)
 
 
 bot.run(discord_token)
