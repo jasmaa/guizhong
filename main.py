@@ -131,20 +131,6 @@ async def get_author_voicechannel(ctx):
     return voicechannel
 
 
-# TODO: fix clean up session breaking when stop is called
-async def clean_up_session(voicechannel_id):
-    """Cleans up and deletes queue-playing session."""
-    session = session_cache[voicechannel_id]
-    vc = session.vc
-    play_music_task = session.play_music_task
-
-    vc.stop()
-    await vc.disconnect()
-    if play_music_task is not None:
-        play_music_task.cancel()
-    del session_cache[voicechannel_id]
-
-
 async def play_queue(voicechannel_id):
     """Plays songs going down the session queue."""
     session = session_cache[voicechannel_id]
@@ -170,7 +156,8 @@ async def play_queue(voicechannel_id):
         vc.play(discord.FFmpegPCMAudio(song_filepath), after=post_play)
     else:
         # No songs left in queue, clean up session and leave voice channel
-        await clean_up_session(voicechannel_id)
+        del session_cache[voicechannel_id]
+        await vc.disconnect()
 
 
 @bot.event
@@ -296,7 +283,7 @@ async def skip(ctx):
 
 @bot.command()
 async def stop(ctx):
-    """Stops bot from playing queue."""
+    """Clears songs and stops playing from queue."""
     voicechannel = await get_author_voicechannel(ctx)
     if voicechannel is None:
         await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
@@ -306,7 +293,11 @@ async def stop(ctx):
         await ctx.send(NO_SESSION_FOUND_MESSAGE)
         return
 
-    await clean_up_session(voicechannel.id)
+    session = session_cache[voicechannel.id]
+
+    # Clear queue and stop voice client to force session clean-up
+    session.queue = []
+    session.vc.stop()
 
 
 bot.run(discord_token)
