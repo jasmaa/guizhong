@@ -22,10 +22,22 @@ bot = commands.Bot(command_prefix=discord_command_prefix, intents=intents)
 session_cache = {}
 music_cache_path = Path("/tmp/guizhong/music_cache")
 
-AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE = (
-    "You need to be in a voice channel to use this command."
+AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE = "You need to be in a voice channel to use this command. Try joining a voice and trying again."
+SAMPLE_COMMAND_MESSAGE_PART = (
+    f"Try playing something with `{discord_command_prefix}play <YOUTUBE VIDEO URL>`."
 )
-NO_SESSION_FOUND_MESSAGE = f"You need to have music queued to use this command. Try playing something with `{discord_command_prefix}play <YOUTUBE VIDEO URL>`."
+NO_SESSION_FOUND_MESSAGE = (
+    f"You need to have music queued to use this command. {SAMPLE_COMMAND_MESSAGE_PART}"
+)
+INVALID_ARGS_FOR_PLAY_MESSAGE = (
+    f"A single URL must be provided for this command. {SAMPLE_COMMAND_MESSAGE_PART}"
+)
+INVALID_YOUTUBE_URL_FOR_PLAY_MESSAGE = (
+    "Invalid URL provided. Please provide a valid Youtube video URL."
+)
+GENERAL_ERROR_FOR_PLAY_MESSAGE = (
+    "Unable to queue song due to an unknown error. Please contact the bot owner."
+)
 MAX_SONG_INFOS_TO_DISPLAY = 5
 
 
@@ -47,26 +59,30 @@ class Song:
         return str(self.song_filepath)
 
 
+class InvalidSongURLError(RuntimeError):
+    """Exception for invalid song URL on parse."""
+
+
 def parse_youtube_video_url(url):
     """Parses Youtube video id from valid URL. Throws runtime error if URL is invalid."""
     url_parse = urlparse(url)
 
     if url_parse.hostname != "youtube.com" and url_parse.hostname != "www.youtube.com":
-        raise RuntimeError("invalid hostname")
+        raise InvalidSongURLError("invalid hostname")
     if url_parse.path != "/watch":
-        raise RuntimeError("invalid path")
+        raise InvalidSongURLError("invalid path")
 
     query_parse = parse_qs(url_parse.query)
 
     if query_parse.get("v")[0] is None:
-        raise RuntimeError("invalid video id")
+        raise InvalidSongURLError("invalid video id")
 
     video_id = query_parse.get("v")[0]
 
     return video_id
 
 
-def get_or_download_youtube_mp3(voicechannel_id, video_id):
+async def get_or_download_youtube_mp3(ctx, voicechannel_id, video_id):
     """Gets Youtube MP3 by voicechannel id and video id. If song is not cached, downloads from web."""
     song_hash = hashlib.md5(video_id.encode("utf8")).hexdigest()
     video_url = f"https://www.youtube.com/watch?v={video_id}"
@@ -75,6 +91,8 @@ def get_or_download_youtube_mp3(voicechannel_id, video_id):
     metadata_filepath = parent_path / "metadata.json"
 
     if not os.path.exists(parent_path):
+        await ctx.send("Downloading song. This might take a while...")
+
         subprocess.run(
             [
                 "yt-dlp",
@@ -199,8 +217,15 @@ async def info(ctx):
 
 
 @bot.command()
-async def play(ctx, arg):
+async def play(ctx, *args):
     """Downloads and plays song in argument. If bot is not in call, bot will join call."""
+    if not args:
+        await ctx.send(INVALID_ARGS_FOR_PLAY_MESSAGE)
+        return
+    if len(args) != 1:
+        await ctx.send(INVALID_ARGS_FOR_PLAY_MESSAGE)
+        return
+
     voicechannel = await get_author_voicechannel(ctx)
     if voicechannel is None:
         await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
@@ -212,18 +237,25 @@ async def play(ctx, arg):
         session_cache[voicechannel.id] = Session(vc=vc)
 
     session = session_cache[voicechannel.id]
-    vc = session.vc
     queue = session.queue
 
     # Download or get music
-    video_id = parse_youtube_video_url(arg)
-    song = get_or_download_youtube_mp3(voicechannel.id, video_id)
-    queue.append(song)
-    print(f"Added {song} to queue")
-
-    # Start a new music task if nothing is playing
-    if session.play_music_task is None:
-        session.play_music_task = asyncio.create_task(play_queue(voicechannel.id))
+    url = args[0]
+    video_id = None
+    try:
+        video_id = parse_youtube_video_url(url)
+        song = await get_or_download_youtube_mp3(ctx, voicechannel.id, video_id)
+        queue.append(song)
+        print(f"Added {song} to queue")
+        await ctx.send(f"Successfully queued {song.title}!")
+    except InvalidSongURLError:
+        await ctx.send(INVALID_YOUTUBE_URL_FOR_PLAY_MESSAGE)
+    except Exception:
+        await ctx.send(GENERAL_ERROR_FOR_PLAY_MESSAGE)
+    finally:
+        # Start a new music task if nothing is playing
+        if session.play_music_task is None:
+            session.play_music_task = asyncio.create_task(play_queue(voicechannel.id))
 
 
 @bot.command()
