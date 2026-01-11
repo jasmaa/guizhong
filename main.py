@@ -142,7 +142,7 @@ async def play_queue(voicechannel_id):
         song_filepath = queue[0].song_filepath
 
         def post_play(e):
-            queue.pop()
+            queue.pop(0)
             fut = session.play_music_task = asyncio.run_coroutine_threadsafe(
                 play_queue(voicechannel_id),
                 bot.loop,
