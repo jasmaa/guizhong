@@ -295,8 +295,19 @@ async def resume(ctx):
 
 
 @bot.command()
-async def skip(ctx):
+async def skip(ctx, *args):
     """Skips current song in queue."""
+
+    n_skip = 1
+    if args is not None and len(args) == 1:
+        try:
+            n_skip = int(args[0])
+        except ValueError as e:
+            await ctx.send(
+                f"Invalid number of songs to skip. Try skipping songs with `{discord_command_prefix}skip <NUMBER OF SONGS>`."
+            )
+            return
+
     voicechannel = await get_author_voicechannel(ctx)
     if voicechannel is None:
         await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
@@ -308,6 +319,10 @@ async def skip(ctx):
 
     session = session_cache[voicechannel.id]
     vc = session.vc
+    queue = session.queue
+
+    # Remove n-1 next songs
+    del queue[1:n_skip]
 
     # Stopping current stream will trigger after callback and queue up next song
     vc.stop()
