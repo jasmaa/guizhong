@@ -36,7 +36,6 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix=discord_command_prefix, intents=intents)
 session_cache = {}
-music_cache_path = Path("/tmp/guizhong/music_cache")
 
 AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE = "You need to be in a voice channel to use this command. Try joining a voice and trying again."
 SAMPLE_COMMAND_MESSAGE_PART = (
@@ -79,7 +78,7 @@ class InvalidSongURLError(RuntimeError):
 
 
 def parse_youtube_video_url(url):
-    """Parses Youtube video id from valid URL. Throws runtime error if URL is invalid."""
+    """Parses Youtube video id from valid URL. Throws InvalidSongURLError if URL is invalid."""
     url_parse = urlparse(url)
 
     valid_hostnames = ["youtube.com", "www.youtube.com", "m.youtube.com"]
@@ -100,7 +99,7 @@ def parse_youtube_video_url(url):
 
 
 async def extract_song(video_id):
-    """Gets Youtube MP3 by voicechannel id and video id. If song is not cached, downloads from web."""
+    """Gets Youtube song info by voicechannel id and video id."""
     video_url = f"https://www.youtube.com/watch?v={video_id}"
 
     with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
