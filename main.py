@@ -1,16 +1,32 @@
 import os
-import subprocess
-import hashlib
 from pathlib import Path
 import asyncio
-import json
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+import yt_dlp
 
 load_dotenv()
+
+YDL_OPTIONS = {
+    "format": "bestaudio/best",
+    "outtmpl": "%(extractor)s-%(id)s-%(title)s.%(ext)s",
+    "quiet": True,
+    "postprocessors": [
+        {
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "mp3",
+            "preferredquality": "192",
+        }
+    ],
+}
+
+FFMPEG_OPTIONS = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn",
+}
 
 discord_token = os.environ.get("DISCORD_TOKEN")
 discord_command_prefix = os.environ.get("DISCORD_COMMAND_PREFIX", "!")
@@ -49,14 +65,13 @@ class Session:
 
 
 class Song:
-    def __init__(self, song_hash, song_filepath, title, duration):
-        self.song_hash = song_hash
-        self.song_filepath = song_filepath
+    def __init__(self, title, duration, video_url):
         self.title = title
         self.duration = duration
+        self.video_url = video_url
 
     def __str__(self):
-        return str(self.song_filepath)
+        return str(self.title)
 
 
 class InvalidSongURLError(RuntimeError):
@@ -84,59 +99,18 @@ def parse_youtube_video_url(url):
     return video_id
 
 
-async def get_or_download_youtube_mp3(ctx, voicechannel_id, video_id):
+async def extract_song(video_id):
     """Gets Youtube MP3 by voicechannel id and video id. If song is not cached, downloads from web."""
-    song_hash = hashlib.md5(video_id.encode("utf8")).hexdigest()
     video_url = f"https://www.youtube.com/watch?v={video_id}"
-    parent_path = music_cache_path / str(voicechannel_id) / song_hash
-    song_filepath = parent_path / "song.mp3"
-    metadata_filepath = parent_path / "metadata.json"
 
-    if not os.path.exists(parent_path):
-        await ctx.send("Downloading song. This might take a while...")
-
-        subprocess.run(
-            [
-                "yt-dlp",
-                "-x",
-                "--audio-format",
-                "mp3",
-                "-o",
-                song_filepath,
-                video_url,
-            ]
-        )
-
-        metadata = {}
-        with open(metadata_filepath, "w") as f:
-            output = subprocess.Popen(
-                [
-                    "yt-dlp",
-                    "-J",
-                    video_url,
-                ],
-                stdout=subprocess.PIPE,
-            ).communicate()[0]
-            metadata = json.loads(output.decode("utf8"))
-            json.dump(metadata, f)
+    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+        url = video_url
+        info = ydl.extract_info(url, download=False)
 
         return Song(
-            song_hash=song_hash,
-            song_filepath=song_filepath,
-            title=metadata["title"],
-            duration=metadata["duration"],
-        )
-
-    else:
-        metadata = {"title": "Unknown", "duration": -1}
-        with open(metadata_filepath, "r") as f:
-            metadata = json.load(f)
-
-        return Song(
-            song_hash=song_hash,
-            song_filepath=song_filepath,
-            title=metadata["title"],
-            duration=metadata["duration"],
+            video_url=video_url,
+            title=info["title"],
+            duration=info["duration"],
         )
 
 
@@ -159,7 +133,7 @@ async def play_queue(voicechannel_id):
 
     if len(queue) > 0:
         # Play next song in the queue
-        song_filepath = queue[0].song_filepath
+        video_url = queue[0].video_url
 
         def post_play(e):
             queue.pop(0)
@@ -173,7 +147,13 @@ async def play_queue(voicechannel_id):
                 pass
 
         vc.stop()
-        vc.play(discord.FFmpegPCMAudio(song_filepath), after=post_play)
+
+        # Taken from: https://stackoverflow.com/questions/75680967/using-yt-dlp-in-discord-py-to-play-a-song
+        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(video_url, download=False)
+            url2 = info["url"]
+            source = discord.FFmpegPCMAudio(url2, **FFMPEG_OPTIONS)
+            vc.play(source, after=post_play)
     else:
         # No songs left in queue, clean up session and leave voice channel
         del session_cache[voicechannel_id]
@@ -241,18 +221,19 @@ async def play(ctx, *args):
     session = session_cache[voicechannel.id]
     queue = session.queue
 
-    # Download or get music
+    # Extract and queue song
     url = args[0]
     video_id = None
     try:
         video_id = parse_youtube_video_url(url)
-        song = await get_or_download_youtube_mp3(ctx, voicechannel.id, video_id)
+        song = await extract_song(video_id)
         queue.append(song)
         print(f"Added {song} to queue")
         await ctx.send(f"Successfully queued {song.title}!")
     except InvalidSongURLError:
         await ctx.send(INVALID_YOUTUBE_URL_FOR_PLAY_MESSAGE)
-    except Exception:
+    except Exception as e:
+        print(f"Error: {e}")
         await ctx.send(GENERAL_ERROR_FOR_PLAY_MESSAGE)
     finally:
         # Start a new music task if nothing is playing
