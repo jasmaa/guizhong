@@ -290,6 +290,13 @@ async def skip(ctx, *args):
             )
             return
 
+    # Cannot skip fewer than 1 song
+    if n_skip <= 0:
+        await ctx.send(
+            f"Invalid number of songs to skip. Try skipping songs with `{discord_command_prefix}skip <NUMBER OF SONGS>`."
+        )
+        return
+
     voicechannel = await get_author_voicechannel(ctx)
     if voicechannel is None:
         await ctx.send(AUTHOR_NOT_IN_VOICE_CHANNEL_MESSAGE)
