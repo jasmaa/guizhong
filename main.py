@@ -67,7 +67,9 @@ def parse_youtube_video_url(url):
     """Parses Youtube video id from valid URL. Throws runtime error if URL is invalid."""
     url_parse = urlparse(url)
 
-    if url_parse.hostname != "youtube.com" and url_parse.hostname != "www.youtube.com":
+    valid_hostnames = ["youtube.com", "www.youtube.com", "m.youtube.com"]
+
+    if url_parse.hostname not in valid_hostnames:
         raise InvalidSongURLError("invalid hostname")
     if url_parse.path != "/watch":
         raise InvalidSongURLError("invalid path")
