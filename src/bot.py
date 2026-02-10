@@ -336,4 +336,5 @@ async def stop(ctx):
     session.vc.stop()
 
 
-bot.run(discord_token)
+if __name__ == "__main__":
+    bot.run(discord_token)

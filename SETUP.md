@@ -33,16 +33,10 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/):
 pip3 install uv
 ```
 
-Install [YT-DLP](https://github.com/yt-dlp/yt-dlp/wiki/Installation#with-pip):
-
-```
-pip3 install yt-dlp
-```
-
 Install deps and run bot:
 
 ```
-uv run main.py
+uv run src/bot.py
 ```
 
 
