@@ -1,4 +1,3 @@
-import os
 import asyncio
 import discord
 from discord.ext import commands
@@ -8,8 +7,7 @@ from src.song import Song
 from src.utils import parse_youtube_video_url
 
 
-def create_and_run_bot(discord_token, discord_command_prefix):
-
+def create_bot(discord_command_prefix):
     FFMPEG_OPTIONS = {
         "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
         "options": "-vn",
@@ -249,5 +247,9 @@ def create_and_run_bot(discord_token, discord_command_prefix):
         session.queue = []
         session.vc.stop()
 
-    # Run bot
+    return bot
+
+
+def create_and_run_bot(discord_token, discord_command_prefix):
+    bot = create_bot(discord_command_prefix)
     bot.run(discord_token)
