@@ -36,7 +36,7 @@ pip3 install uv
 Install deps and run bot:
 
 ```
-uv run src/bot.py
+uv run main.py
 ```
 
 

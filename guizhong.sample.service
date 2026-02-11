@@ -4,7 +4,7 @@ Description=Guizhong Service
 [Service]
 WorkingDirectory=<FILL WORKSPACE>
 User=<FILL USER>
-ExecStart=uv run src/bot.py
+ExecStart=uv run main.py
 Restart=always
 
 [Install]
