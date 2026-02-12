@@ -3,8 +3,8 @@ from src.song import Song
 
 
 def test_song_happy_path(mocker):
-    youtubedl_mock = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_mock.return_value.__enter__.return_value.extract_info.return_value = {
+    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
+    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
         "title": "It's MyGO!!!!!",
         "duration": 9000,
         "url": "https://example.com/mygo.mp3",
