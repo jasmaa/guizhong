@@ -5,9 +5,8 @@ from src.handler import Handler
 @pytest.mark.asyncio
 async def test_info_author_not_in_voice(mocker):
     bot = mocker.MagicMock()
-    voicechannel = None
     ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
+    ctx.author.voice = None
 
     handler = Handler(bot=bot)
 
