@@ -139,7 +139,7 @@ def create_bot(discord_command_prefix):
         video_id = None
         try:
             video_id = parse_youtube_video_url(url)
-            song = await Song.extract_song(video_id)
+            song = Song.extract_song(video_id)
             queue.append(song)
             print(f"Added {song} to queue")
             await ctx.send(f"Successfully queued {song.title}!")

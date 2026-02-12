@@ -24,7 +24,7 @@ class Song:
         return str(self.title)
 
     @staticmethod
-    async def extract_song(video_id):
+    def extract_song(video_id):
         """Gets Youtube song info by voicechannel id and video id."""
         video_url = f"https://www.youtube.com/watch?v={video_id}"
 
