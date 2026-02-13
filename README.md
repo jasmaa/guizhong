@@ -22,6 +22,5 @@ uv run pytest -v -s --cov=src --cov-report=html
 Formatting code:
 
 ```
-uv tool install black
 black .
 ```

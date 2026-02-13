@@ -1,7 +1,7 @@
 [project]
 name = "guizhong"
 version = "2.0.0"
-description = "Add your description here"
+description = "A Discord bot that plays music from a queue."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -16,4 +16,5 @@ dev = [
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.0.0",
+    "black>=26.1.0",
 ]

@@ -17,7 +17,6 @@ def create_bot(discord_command_prefix):
 
     @bot.command()
     async def info(ctx):
-        print(handler.session_cache)
         await handler.info(ctx)
 
     @bot.command()
