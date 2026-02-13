@@ -1,7 +1,6 @@
 # Guizhong
 
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/jasmaa/guizhong/test.yml)
-](https://github.com/jasmaa/guizhong/actions/workflows/test.yml)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/jasmaa/guizhong/test.yml)](https://github.com/jasmaa/guizhong/actions/workflows/test.yml)
 [![Codecov](https://img.shields.io/codecov/c/github/jasmaa/guizhong)](https://app.codecov.io/gh/jasmaa/guizhong/)
 
 
