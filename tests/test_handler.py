@@ -2,8 +2,8 @@ import pytest
 from src.handler import Handler
 
 
-@pytest.mark.asyncio
-async def test_info_songs_queued(mocker):
+@pytest.fixture
+def default_setup(mocker):
     bot = mocker.MagicMock()
     voicechannel = mocker.AsyncMock()
     voicechannel.id = "111111111111111111"
@@ -19,6 +19,19 @@ async def test_info_songs_queued(mocker):
     }
     mocker.patch("discord.FFmpegPCMAudio")
 
+    return bot, ctx, vc
+
+
+@pytest.fixture
+def no_author_in_voice_setup(default_setup):
+    bot, ctx, vc = default_setup
+    ctx.author.voice = None
+    return bot, ctx, vc
+
+
+@pytest.mark.asyncio
+async def test_info_songs_queued(default_setup):
+    bot, ctx, _ = default_setup
     handler = Handler(bot=bot)
 
     await handler.play(ctx, "https://youtube.com/watch?v=123")
@@ -29,11 +42,8 @@ async def test_info_songs_queued(mocker):
 
 
 @pytest.mark.asyncio
-async def test_info_author_not_in_voice(mocker):
-    bot = mocker.MagicMock()
-    ctx = mocker.AsyncMock()
-    ctx.author.voice = None
-
+async def test_info_author_not_in_voice(no_author_in_voice_setup):
+    bot, ctx, _ = no_author_in_voice_setup
     handler = Handler(bot=bot)
 
     await handler.info(ctx)
@@ -43,15 +53,8 @@ async def test_info_author_not_in_voice(mocker):
 
 
 @pytest.mark.asyncio
-async def test_info_no_songs_queued(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-
+async def test_info_no_songs_queued(default_setup):
+    bot, ctx, _ = default_setup
     handler = Handler(bot=bot)
 
     await handler.info(ctx)
@@ -61,22 +64,8 @@ async def test_info_no_songs_queued(mocker):
 
 
 @pytest.mark.asyncio
-async def test_play_song_provided(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_play_song_provided(default_setup):
+    bot, ctx, _ = default_setup
     handler = Handler(bot=bot)
 
     await handler.play(ctx, "https://youtube.com/watch?v=123")
@@ -86,18 +75,8 @@ async def test_play_song_provided(mocker):
 
 
 @pytest.mark.asyncio
-async def test_play_author_not_in_voice(mocker):
-    bot = mocker.MagicMock()
-    ctx = mocker.AsyncMock()
-    ctx.author.voice = None
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_play_author_not_in_voice(no_author_in_voice_setup):
+    bot, ctx, _ = no_author_in_voice_setup
     handler = Handler(bot=bot)
 
     await handler.play(ctx, "https://youtube.com/watch?v=123")
@@ -107,22 +86,8 @@ async def test_play_author_not_in_voice(mocker):
 
 
 @pytest.mark.asyncio
-async def test_play_bad_input(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_play_bad_input(default_setup):
+    bot, ctx, _ = default_setup
     handler = Handler(bot=bot)
 
     await handler.play(ctx)
@@ -144,22 +109,8 @@ async def test_play_bad_input(mocker):
 
 
 @pytest.mark.asyncio
-async def test_pause_songs_queued(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_pause_songs_queued(default_setup):
+    bot, ctx, vc = default_setup
     handler = Handler(bot=bot)
 
     await handler.play(ctx, "https://youtube.com/watch?v=123")
@@ -169,18 +120,8 @@ async def test_pause_songs_queued(mocker):
 
 
 @pytest.mark.asyncio
-async def test_pause_author_not_in_voice(mocker):
-    bot = mocker.MagicMock()
-    ctx = mocker.AsyncMock()
-    ctx.author.voice = None
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_pause_author_not_in_voice(no_author_in_voice_setup):
+    bot, ctx, _ = no_author_in_voice_setup
     handler = Handler(bot=bot)
 
     await handler.pause(ctx)
@@ -190,22 +131,8 @@ async def test_pause_author_not_in_voice(mocker):
 
 
 @pytest.mark.asyncio
-async def test_resume_songs_queued(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_resume_songs_queued(default_setup):
+    bot, ctx, vc = default_setup
     handler = Handler(bot=bot)
 
     await handler.play(ctx, "https://youtube.com/watch?v=123")
@@ -216,18 +143,8 @@ async def test_resume_songs_queued(mocker):
 
 
 @pytest.mark.asyncio
-async def test_resume_author_not_in_voice(mocker):
-    bot = mocker.MagicMock()
-    ctx = mocker.AsyncMock()
-    ctx.author.voice = None
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_resume_author_not_in_voice(no_author_in_voice_setup):
+    bot, ctx, _ = no_author_in_voice_setup
     handler = Handler(bot=bot)
 
     await handler.resume(ctx)
@@ -237,18 +154,10 @@ async def test_resume_author_not_in_voice(mocker):
 
 
 @pytest.mark.asyncio
-async def test_skip_default_stops_current_song(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_skip_default_stops_current_song(mocker, default_setup):
+    bot, ctx, vc = default_setup
     handler = Handler(bot=bot)
+    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
 
     youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
         "title": "It's MyGO!!!!!",
@@ -277,18 +186,12 @@ async def test_skip_default_stops_current_song(mocker):
 
 
 @pytest.mark.asyncio
-async def test_skip_multiple_removes_n_minus_one_and_stops_current_song(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_skip_multiple_removes_n_minus_one_and_stops_current_song(
+    mocker, default_setup
+):
+    bot, ctx, vc = default_setup
     handler = Handler(bot=bot)
+    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
 
     youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
         "title": "It's MyGO!!!!!",
@@ -318,24 +221,10 @@ async def test_skip_multiple_removes_n_minus_one_and_stops_current_song(mocker):
 
 
 @pytest.mark.asyncio
-async def test_skip_bad_inputs(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_skip_bad_inputs(default_setup):
+    bot, ctx, _ = default_setup
     handler = Handler(bot=bot)
 
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
     await handler.play(ctx, "https://youtube.com/watch?v=123")
 
     await handler.skip(ctx, "not a number")
@@ -356,18 +245,8 @@ async def test_skip_bad_inputs(mocker):
 
 
 @pytest.mark.asyncio
-async def test_skip_author_not_in_voice(mocker):
-    bot = mocker.MagicMock()
-    ctx = mocker.AsyncMock()
-    ctx.author.voice = None
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_skip_author_not_in_voice(no_author_in_voice_setup):
+    bot, ctx, _ = no_author_in_voice_setup
     handler = Handler(bot=bot)
 
     await handler.skip(ctx)
@@ -377,22 +256,8 @@ async def test_skip_author_not_in_voice(mocker):
 
 
 @pytest.mark.asyncio
-async def test_stop_songs_queued(mocker):
-    bot = mocker.MagicMock()
-    voicechannel = mocker.AsyncMock()
-    voicechannel.id = "111111111111111111"
-    vc = mocker.AsyncMock()
-    voicechannel.connect.return_value = vc
-    ctx = mocker.AsyncMock()
-    ctx.author.voice.channel = voicechannel
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_stop_songs_queued(default_setup):
+    bot, ctx, vc = default_setup
     handler = Handler(bot=bot)
 
     await handler.play(ctx, "https://youtube.com/watch?v=123")
@@ -402,18 +267,8 @@ async def test_stop_songs_queued(mocker):
 
 
 @pytest.mark.asyncio
-async def test_stop_author_not_in_voice(mocker):
-    bot = mocker.MagicMock()
-    ctx = mocker.AsyncMock()
-    ctx.author.voice = None
-    youtubedl_cls = mocker.patch("yt_dlp.YoutubeDL")
-    youtubedl_cls.return_value.__enter__.return_value.extract_info.return_value = {
-        "title": "It's MyGO!!!!!",
-        "duration": 9000,
-        "url": "https://example.com/mygo.mp3",
-    }
-    mocker.patch("discord.FFmpegPCMAudio")
-
+async def test_stop_author_not_in_voice(no_author_in_voice_setup):
+    bot, ctx, _ = no_author_in_voice_setup
     handler = Handler(bot=bot)
 
     await handler.stop(ctx)
