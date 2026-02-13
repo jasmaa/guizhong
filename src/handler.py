@@ -188,12 +188,17 @@ class Handler:
         """Skips current song in queue."""
 
         n_skip = 1
-        if args is not None and len(args) == 1:
+        if args is None or len(args) == 0:
+            n_skip = 1
+        elif len(args) == 1:
             try:
                 n_skip = int(args[0])
             except ValueError as e:
                 await ctx.send(INVALID_NUMBER_OF_SONGS_TO_SKIP_MESSAGE)
                 return
+        else:
+            await ctx.send(INVALID_NUMBER_OF_SONGS_TO_SKIP_MESSAGE)
+            return
 
         # Cannot skip fewer than 1 song
         if n_skip <= 0:
