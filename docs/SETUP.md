@@ -16,7 +16,6 @@ Visit following URL and invite bot to server:
 https://discord.com/api/oauth2/authorize?client_id=<FILL WITH DISCORD_CLIENT_ID>&permissions=3148800&scope=bot%20applications.commands
 ```
 
-
 ### Run bot
 
 Create `.env` from `sample.env` and fill with values.
@@ -38,7 +37,6 @@ Install deps and run bot:
 ```
 uv run main.py
 ```
-
 
 ### Setup systemd service (optional)
 
@@ -62,4 +60,11 @@ Check status of service with:
 ```
 sudo systemctl status guizhong.service
 journalctl -u guizhong.service | tail
+```
+
+Update the bot with:
+
+```
+git pull origin main
+sudo systemctl restart guizhong.service
 ```
