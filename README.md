@@ -16,7 +16,7 @@ See [setup instructions](./SETUP.md) for more detailed instructions.
 Testing code:
 
 ```
-uv run pytest -v -s --cov=src --cov-report=html
+uv run pytest -v -s --cov=src --cov-branch --cov-report=xml --cov-report=html --cov-report=term
 ```
 
 Formatting code:

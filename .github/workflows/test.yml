@@ -17,4 +17,8 @@ jobs:
           python-version: '3.13'
       - uses: astral-sh/setup-uv@v7
       - run: uv run black --check .
-      - run: uv run pytest -v -s --cov=src --cov-report=html
+      - run: uv run pytest -v -s --cov=src --cov-branch --cov-report=xml --cov-report=html --cov-report=term
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
