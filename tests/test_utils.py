@@ -17,6 +17,7 @@ def test_parse_youtube_url_happy_path():
         parse_youtube_video_url("https://www.youtube.com/watch?v=first&v=second")
         == "first"
     )
+    assert parse_youtube_video_url("https://youtu.be/wsiLNWrS5m0") == "wsiLNWrS5m0"
 
 
 def test_parse_youtube_url_invalid_urls():
