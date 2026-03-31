@@ -15,8 +15,8 @@ def parse_youtube_video_url(url):
 
     if url_parse.hostname == "youtu.be":
         # Handle shortened URL
-        m = re.search("/(\w+)", url_parse.path)
-        if m.group(1) is None:
+        m = re.search("^/(\\w+)$", url_parse.path)
+        if m is None or m.group(1) is None:
             raise InvalidSongURLError("invalid path")
 
         video_id = m.group(1)

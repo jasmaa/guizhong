@@ -27,3 +27,7 @@ def test_parse_youtube_url_invalid_urls():
         assert parse_youtube_video_url("http://www.youtube.com/watch")
     with pytest.raises(InvalidSongURLError):
         assert parse_youtube_video_url("http://www.youtube.com/watch?random=23")
+    with pytest.raises(InvalidSongURLError):
+        assert parse_youtube_video_url("http://www.youtube.com/play?random=23")
+    with pytest.raises(InvalidSongURLError):
+        assert parse_youtube_video_url("https://youtu.be/not a good path")
