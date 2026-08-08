@@ -22,14 +22,20 @@ def parse_youtube_video_url(url):
         video_id = m.group(1)
         return video_id
     else:
-        # Handle normal URL
-        if url_parse.path != "/watch":
-            raise InvalidSongURLError("invalid path")
+        if url_parse.path == "/watch":
+            # Normal URL
+            query_parse = parse_qs(url_parse.query)
 
-        query_parse = parse_qs(url_parse.query)
+            if query_parse.get("v") is None or query_parse.get("v")[0] is None:
+                raise InvalidSongURLError("invalid video id")
 
-        if query_parse.get("v") is None or query_parse.get("v")[0] is None:
-            raise InvalidSongURLError("invalid video id")
+            video_id = query_parse.get("v")[0]
+            return video_id
+        else:
+            # Handle Shorts URL
+            m = re.search("^/shorts/([\\w-]+)$", url_parse.path)
+            if m is None or m.group(1) is None:
+                raise InvalidSongURLError("invalid path")
 
-        video_id = query_parse.get("v")[0]
-        return video_id
+            video_id = m.group(1)
+            return video_id

@@ -19,6 +19,10 @@ def test_parse_youtube_url_happy_path():
     )
     assert parse_youtube_video_url("https://youtu.be/wsiLNWrS5m0") == "wsiLNWrS5m0"
     assert parse_youtube_video_url("https://youtu.be/tk-uP-Yfl5I") == "tk-uP-Yfl5I"
+    assert (
+        parse_youtube_video_url("https://www.youtube.com/shorts/NZ1o2Ld59SI")
+        == "NZ1o2Ld59SI"
+    )
 
 
 def test_parse_youtube_url_invalid_urls():
